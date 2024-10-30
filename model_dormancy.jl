@@ -12,8 +12,8 @@ d(x, t, μ, c, Ton, Toff) = mod(t, Ton + Toff) < Ton ? gammahaz(μ, c, x) : 0.0
 
 @independent_variables t 
 @variables x(t)
-@parameters pγ[1:2] pd[1:2] pτon[1:2] pτoff[1:2] pT[1:2]
-psyms = [pγ, pd, pτon, pτoff, pT]
+@parameters pγ[1:2] pd[1:2] pτon[1:2] pτoff[1:2] pT[1:2] T1
+psyms = [pγ, pd, pτon, pτoff, pT, T1]
 
 sys = complete(ODESystem(Equation[], t, [x,], psyms; name=:sys))
 
@@ -32,7 +32,7 @@ param_map = Dict(
     pd => [2.0, 1e-3],
     pτoff => [0.1, 1.0], 
     pτon => [0.1, 1.0], 
-    pT => [T1_, T1_])
+    pT => [0.1, 0.1])
 
 vary_T = exp.(range(0.0, stop=1.5, length=20)) 
 main(matMsymb, matLsymb, sys; 

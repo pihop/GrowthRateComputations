@@ -23,7 +23,7 @@ matMsymb = [
 param_map = Dict(
     pγ => [1.8, 1.0],
     pd => [2.0, 1e-3],
-    pT => [T1_, T1_])
+    pT => [0.1, 0.1])
 
 vary_T = exp.(range(-1.0, stop=2.5, length=20)) 
 main(matMsymb, matLsymb, sys; 
