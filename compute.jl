@@ -193,9 +193,6 @@ function main(matM, matL, sys; param_map, trange, iters, xintsteps, tintsteps, n
     savepath = "data/$name/iters_$(iters)_intgrid_$(xintsteps)"
     mkpath(savepath)
 
-    filename = "$(savepath)/results_lambda.csv"
-    file = open(filename,"w")
-    
     df_growth_rate = DataFrame(
         T1 = Float64[], 
         T2 = Float64[], 
