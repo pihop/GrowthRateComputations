@@ -108,10 +108,11 @@ function compute_lambda(fn, xs, periods; kernel)
 end
 
 function check_convergence(history, reltol)
-    length(history) <= 4 && return false
-    hs1 = history[end-3:end-2]
-    hs2 = history[end-1:end]
-    abs(abs(sum(hs1) - sum(hs2)) / sum(hs2)) < reltol && return true
+    length(history) <= 10 && return false
+    min_ = minimum(history[end-10:end])
+    max_ = maximum(history[end-10:end])
+    
+    (max_ - min_)/min_ < reltol && return true
     return false
 end
 
@@ -130,15 +131,12 @@ function iterate(xs, periods, maxiters; initfn, kernel, reltol=1e-3)
     fu1 = nothing
     history = [] 
     converged = false
-    while n <= maxiters
+    while n <= maxiters && !converged
         telapse = @elapsed begin
             λ = compute_lambda(fn, xs, periods; kernel=kernel)
             push!(history, λ)
             fu1 = update_f!(λ, fn, xs, periods; kernel=kernel)
-            check_convergence(history, reltol) && begin
-                converged = true
-                break
-            end
+            converged = check_convergence(history, reltol) 
             λprev = λ
         end
         println("λ estimate $λ... iteration took $(telapse) seconds")
