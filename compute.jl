@@ -72,19 +72,20 @@ end
 function solvef(λ, fn, xs, periods; kernel)
     ys = [kernel(x, t, λ) * fn(t-x) for x in xs, t in periods]
     problem = SampledIntegralProblem(ys, xs; dim = 1)
-    soln = solve(problem, TrapezoidalRule())
-
-    ys1 = [diagm(kernel(x, t, λ)[1, :]) * fn(t-x) for x in xs, t in periods]
-    problem1 = SampledIntegralProblem(ys1, xs; dim = 1)
-    soln1 = solve(problem1, TrapezoidalRule())
-
-    return soln, soln1
+    return solve(problem, TrapezoidalRule())
 end
 
+function solvef1(λ, fn, xs, periods; kernel)
+    ys = [diagm(kernel(x, t, λ)[1, :]) * fn(t-x) for x in xs, t in periods]
+    problem = SampledIntegralProblem(ys, xs; dim = 1)
+    sol = solve(problem, TrapezoidalRule())
+    return TestFunction(periods, sol.u)
+end
+
+
 function update_f!(λ, fn, xs, periods; kernel)
-    fu, fu1 = solvef(λ, fn, xs, periods; kernel=kernel)
+    fu = solvef(λ, fn, xs, periods; kernel=kernel)
     update_interp!(fn, fu.u)
-    return TestFunction(periods, fu1.u)
 end
 
 function lambda_integral(fn, xs, periods; kernel)
@@ -122,26 +123,27 @@ function iterate(xs, periods, maxiters; initfn, kernel, reltol=1e-3)
         initf = initf ./ (periods[end] - periods[1])
         fn = TestFunction(periods, collect.(zip(initf, zeros(length(periods)))))
     else
-        fn = TestFunction(periods, initfn.(periods))
+        fn = TestFunction(periods, initfn.(initfn.ts))
     end
 
     λ = 0.0
     λprev = Inf
     n = 1
-    fu1 = nothing
     history = [] 
     converged = false
     while n <= maxiters && !converged
         telapse = @elapsed begin
             λ = compute_lambda(fn, xs, periods; kernel=kernel)
             push!(history, λ)
-            fu1 = update_f!(λ, fn, xs, periods; kernel=kernel)
+            update_f!(λ, fn, xs, periods; kernel=kernel)
             converged = check_convergence(history, reltol) 
             λprev = λ
         end
         println("λ estimate $λ... iteration took $(telapse) seconds")
         n += 1
     end
+
+    fu1 = solvef1(λ, fn, xs, periods; kernel=kernel)
     return (λ, fn, fu1, history, converged)
 end
 
@@ -198,6 +200,8 @@ function main(matM, matL, sys; param_map, trange, iters, xintsteps, tintsteps, n
         growth_rate_history = Vector{Vector{Float64}}(), 
         converged = Bool[], 
         file = String[])
+    
+    fn = nothing
 
     for T in trange 
         df_function = DataFrame(
@@ -214,11 +218,11 @@ function main(matM, matL, sys; param_map, trange, iters, xintsteps, tintsteps, n
 
         xspan = (0.0, param_map[pd][1] + 2*(T1+T2))
         period = (0.0, (T1+T2))
-
+        
         λ, fn, fn1, λhistory, converged = run_opt(
             matM, matL, sys,
             param_map, xspan, period; 
-            initfn=nothing, iters=iters, xintsteps=xintsteps, tintsteps=tintsteps, kwargs...)
+            initfn=fn, iters=iters, xintsteps=xintsteps, tintsteps=tintsteps, kwargs...)
         
         filename_fn = "$(savepath)/results_fn_T1_$(T1)_T2_$(T2).csv"
         push!(df_growth_rate, [T1, T2, λ, λhistory, converged, filename_fn])
