@@ -14,29 +14,29 @@ using CairoMakie
 using ColorSchemes
 colors = ColorSchemes.Egypt.colors
 
-mutable struct LSolution
-    problem
-    sol::Dict
-    function LSolution(problem, t)
-        prob = problem(t) 
-        sol = Dict()
-        sol[t] = solve(prob, Tsit5()) 
-        new(problem, sol)
-    end
-end
-
-function new_solution!(sol::LSolution, t)
-    prob = sol.problem(t) 
-    sol.sol[t] = solve(prob, Tsit5()) 
-end
-
-function get_solution(sol::LSolution, x, t)
-    in(t, keys(sol.sol)) && return sol.sol[t](x)
-    new_solution!(sol, t)
-    return sol.sol[t](x)
-end
-
-(sol::LSolution)(x,t) = get_solution(sol, x, t)
+#mutable struct LSolution
+#    problem
+#    sol::Dict
+#    function LSolution(problem, t)
+#        prob = problem(t) 
+#        sol = Dict()
+#        sol[t] = solve(prob, Tsit5()) 
+#        new(problem, sol)
+#    end
+#end
+#
+#function new_solution!(sol::LSolution, t)
+#    prob = sol.problem(t) 
+#    sol.sol[t] = solve(prob, Tsit5()) 
+#end
+#
+#function get_solution(sol::LSolution, x, t)
+#    in(t, keys(sol.sol)) && return sol.sol[t](x)
+#    new_solution!(sol, t)
+#    return sol.sol[t](x)
+#end
+#
+#(sol::LSolution)(x,t) = get_solution(sol, x, t)
 
 mutable struct TestFunction
     fn
@@ -102,9 +102,9 @@ function lambda_integral(fn, xs, periods; kernel)
     return integral
 end
 
-function compute_lambda(fn, xs, periods; kernel)
+function compute_lambda(fn, xs, periods; kernel, atol=1e-4, rtol=1e-4)
     integral = lambda_integral(fn, xs, periods; kernel)
-    zero = find_zero(λ -> 1 - sum(integral(λ).u), 1.0, Order0(), atol=1e-4, rtol=1e-4)
+    zero = find_zero(λ -> 1 - sum(integral(λ).u), 1.0, Order0(), atol=atol, rtol=rtol)
     return zero
 end
 
@@ -117,7 +117,7 @@ function check_convergence(history, reltol)
     return false
 end
 
-function iterate(xs, periods, maxiters; initfn, kernel, reltol=1e-3)  
+function iterate(xs, periods, maxiters; initfn, kernel, reltol=1e-3, kwargs...)  
     if isnothing(initfn)
         initf = ones(length(periods))
         initf = initf ./ (periods[end] - periods[1])
@@ -133,7 +133,7 @@ function iterate(xs, periods, maxiters; initfn, kernel, reltol=1e-3)
     converged = false
     while n <= maxiters && !converged
         telapse = @elapsed begin
-            λ = compute_lambda(fn, xs, periods; kernel=kernel)
+            λ = compute_lambda(fn, xs, periods; kernel=kernel, kwargs...)
             push!(history, λ)
             update_f!(λ, fn, xs, periods; kernel=kernel)
             converged = check_convergence(history, reltol) 
@@ -169,7 +169,7 @@ mutable struct LSolutionInterp
                 sols[j, i] = exp.(solve(prob, TrapezoidalRule()).u)
             end
         end
-        itp = linear_interpolation((xs, ts), sols; extrapolation_bc=(Linear(), Periodic()) )
+        itp = linear_interpolation((xs, ts), sols; extrapolation_bc=(Linear(), Periodic()))
         new(itp, xs, ts)
     end
 end
@@ -193,13 +193,13 @@ function main(matM, matL, sys; param_map, trange, iters, xintsteps, tintsteps, n
     savepath = "data/$name/iters_$(iters)_intgrid_$(xintsteps)"
     mkpath(savepath)
 
-    df_growth_rate = DataFrame(
-        T1 = Float64[], 
-        T2 = Float64[], 
-        growth_rate = Float64[], 
-        growth_rate_history = Vector{Vector{Float64}}(), 
-        converged = Bool[], 
-        file = String[])
+#    df_growth_rate = DataFrame(
+#        T1 = Float64[], 
+#        T2 = Float64[], 
+#        growth_rate = Float64[], 
+#        growth_rate_history = Vector{Vector{Float64}}(), 
+#        converged = Bool[], 
+#        file = String[])
     
     fn = nothing
 
